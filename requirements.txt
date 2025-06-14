@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+beautifulsoup4
+requests
+openai
+langchain
+chromadb
+python-multipart
+pytesseract
+pdfminer.six
+PyPDF2
+python-dotenv
+google-generativeai
