@@ -1,0 +1,49 @@
+# Python virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# Environment variables
+.env
+*.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Byte-compiled files
+*.pyc
+
+# Django or Flask specific
+*.log
+*.sqlite3
+db.sqlite3
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VSCode or other IDEs
+.vscode/
+.idea/
+*.swp
+
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+
+# Test output
+.junit.xml
+
+# Migrations (optional, if auto-generated)
+**/migrations/*.py
+!**/migrations/__init__.py
+
+# Static files (optional)
+staticfiles/
+static/
+
+# Node stuff (if using JS tooling)
+node_modules/
