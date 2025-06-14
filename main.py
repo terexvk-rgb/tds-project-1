@@ -29,8 +29,6 @@ genai.configure(api_key=GOOGLE_API_KEY)
 GEMINI_EMBEDDING_MODEL = "models/embedding-001" 
 # For chat, using a multimodal model to handle potential image input
 # 'gemini-1.5-flash' is a good balance of performance and cost with multimodal support.
-# 'gemini-pro-vision' is an older multimodal model.
-# 'gemini-1.5-pro' is a more capable, but potentially more expensive, multimodal model.
 GEMINI_CHAT_MODEL = "gemini-1.5-flash" 
 
 CHROMA_DB_PATH = "chroma_db"
@@ -81,6 +79,14 @@ def clean_text_for_llm(text):
     # Replace multiple spaces/newlines with single space
     return re.sub(r'\s+', ' ', text).strip()
 
+# --- New GET Endpoint for URL verification ---
+@app.get("/")
+async def root():
+    """
+    Root endpoint for health checks and basic URL accessibility verification.
+    Returns a simple status message.
+    """
+    return {"status": "TDS Virtual TA API is running", "message": "Access /api/ for question answering."}
 
 # --- API Endpoint ---
 @app.post("/api/", response_model=AnswerResponse)
@@ -100,17 +106,12 @@ async def answer_student_question(request: QuestionRequest):
             try:
                 # Decode base64 image data
                 image_bytes = base64.b64decode(request.image)
-                # For Gemini, the image needs to be a PIL Image object
-                # It's important to specify the correct MIME type based on the actual image.
-                # The prompt example had 'project-tds-virtual-ta-q1.webp' so using 'image/webp'
-                # If your images are usually PNG or JPEG, change this accordingly.
-                image_mime_type = "image/webp" # Assuming webp based on previous context, adjust if different
+                image_mime_type = "image/webp" 
                 img = Image.open(io.BytesIO(image_bytes))
                 chat_contents.append(img)
                 print("Image successfully processed and added to chat_contents.")
             except Exception as e:
                 print(f"Warning: Could not process image: {e}")
-                # If image processing fails, still allow the text-based question
                 chat_contents.append({"text": "(Student attempted to send an image, but it could not be processed.)"})
 
 
@@ -126,12 +127,9 @@ async def answer_student_question(request: QuestionRequest):
         links_for_response = []
         
         if retrieval_results and retrieval_results['documents'] and retrieval_results['documents'][0]:
-            # Each item in retrieval_results['documents'][0] is a text string.
-            # Each item in retrieval_results['metadatas'][0] is a dictionary of metadata.
             for i, doc_content in enumerate(retrieval_results['documents'][0]):
                 metadata = retrieval_results['metadatas'][0][i]
                 
-                # Clean the content retrieved from the DB before passing to LLM
                 cleaned_doc_content = clean_text_for_llm(doc_content)
 
                 context_chunks_formatted.append(
@@ -151,12 +149,7 @@ async def answer_student_question(request: QuestionRequest):
 
 
         # 3. Construct LLM Prompt for Gemini
-        # Gemini takes a list of parts as `contents`.
-        # The first part can be a system instruction or a general preamble.
-        # Then, the user's question, image (if applicable), and context are added.
-
-        # System/Preamble for the LLM
-        system_instruction = (
+        system_prompt = (
             "You are a helpful and clever Teaching Assistant for IIT Madras's Online Degree in Data Science, "
             "specifically for the 'Tools in Data Science' course. "
             "Your goal is to answer student questions based *only* on the provided context, which includes "
@@ -168,23 +161,11 @@ async def answer_student_question(request: QuestionRequest):
             "Do not invent information. Your response should be solely derived from the provided context."
         )
         
-        # Combine retrieved context into a single string for the LLM's text part
         context_for_llm = "\n\n".join(context_chunks_formatted)
 
-        # Build the final prompt content for the LLM
-        # The initial chat_contents already contains the text question and potential image.
-        # Now, add the system instruction and the context from RAG.
-        # Gemini's `generate_content` is more conversational than completion for multimodal.
-        # It's recommended to structure turn-based interaction.
-        # For a single query, we combine system instruction and context into the first user turn if it's the only one.
-        
-        # Gemini models often work best with clear turns.
-        # We'll put the system instruction in a "text" part, followed by the user query parts.
-        
-        # The first 'part' can be the system instruction for the model to follow
         combined_contents = [
-            {"text": system_instruction}, # Preamble/system instruction
-            *chat_contents, # The original user text question and image
+            {"text": system_prompt},
+            *chat_contents, 
             {"text": f"\n\nHere is additional relevant context from the course materials and forum discussions:\n{context_for_llm}"}
         ]
 
@@ -192,8 +173,8 @@ async def answer_student_question(request: QuestionRequest):
         gemini_response = gemini_chat_model.generate_content(
             combined_contents,
             generation_config=genai.types.GenerationConfig(
-                temperature=0.1,  # Lower temperature for more factual, less creative responses
-                max_output_tokens=800, # Limit response length
+                temperature=0.1,  
+                max_output_tokens=800, 
             ),
             safety_settings=[
                 {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
@@ -203,15 +184,11 @@ async def answer_student_question(request: QuestionRequest):
             ]
         )
         
-        llm_answer = gemini_response.text.strip()
-        
-        # In case Gemini returns content in 'parts' for text (e.g., if it's a list)
+        llm_answer = ""
+        # Extract text from response parts
         if hasattr(gemini_response, 'candidates') and gemini_response.candidates:
             if hasattr(gemini_response.candidates[0].content, 'parts') and gemini_response.candidates[0].content.parts:
-                # Ensure we get text from parts. This handles cases where text might be split.
                 llm_answer = "".join([part.text for part in gemini_response.candidates[0].content.parts if hasattr(part, 'text')]).strip()
-            else:
-                llm_answer = "" # No text parts found
 
         if not llm_answer:
             llm_answer = "I apologize, but I could not generate a clear answer based on the provided information."
@@ -219,17 +196,14 @@ async def answer_student_question(request: QuestionRequest):
         return AnswerResponse(answer=llm_answer, links=links_for_response)
 
     except HTTPException as e:
-        raise e # Re-raise FastAPI HTTPExceptions
+        raise e 
     except Exception as e:
         print(f"An unexpected error occurred in the API: {e}")
-        # Log the full exception for debugging in production
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 # --- Run the application (for local testing) ---
-# To run locally: uvicorn main:app --reload
-# This block is for local execution only and won't be used in Cloud Run deployment.
 if __name__ == "__main__":
     import uvicorn
     print("\nTo test locally, run `uvicorn main:app --reload`")

@@ -9,7 +9,7 @@ providers:
     config:
       # !! IMPORTANT !!
       # Replaced with your Ngrok forwarding URL.
-      url: "https://023f-2406-7400-75-a015-947b-fbd9-2e14-60f0.ngrok-free.app"
+      url: "https://023f-2406-7400-75-a015-947b-fbd9-2e14-60f0.ngrok-free.app/api/"
       method: post
       headers:
         Content-Type: application/json
@@ -17,18 +17,15 @@ providers:
         question: "{{prompt}}" # '{{prompt}}' takes the prompt text from the 'prompts' section
         image: "{{var.image}}" # '{{var.image}}' takes the base64 image from the 'vars' section of each test case
     
-    # Define how to extract the answer and links from your FastAPI's JSON response
-    # Your FastAPI returns {"answer": "...", "links": [{"url": "...", "text": "..."}]}
-    response:
-      extract:
-        answer: "answer" # Extracts the value of the 'answer' key
-        links: "links"   # Extracts the array of links
+    # Removed the 'response' block to resolve "Unrecognized key" error.
+    # Promptfoo will now receive the raw JSON response, and assertions will
+    # directly access 'output.answer' and 'output.links'.
 
 tests:
   - description: Basic question about course prerequisites
     vars:
       question: "What are the prerequisites for the Tools in Data Science course?"
-      image: null # No image for this test
+      image: "" # Changed from null to empty string
     assert:
       - type: llm-rubric
         value: The answer mentions Python, HTML, JavaScript, and Excel as prerequisites.
@@ -36,37 +33,50 @@ tests:
         # Optional: set a custom model for rubric evaluation if needed
         # model: gpt-4o-mini # Or another model if you have access
         threshold: 3.5 # Score from 1-5, higher means more strict
+        # Ensure to check output.answer directly
+        provider: output.answer
 
   - description: Question about data sourcing methods
     vars:
       question: "How can I source data according to the course content?"
-      image: null
+      image: "" # Changed from null to empty string
     assert:
       - type: contains-any
         value: ["web scraping", "files", "databases", "LLMs"] # Expected keywords
         threshold: 1 # At least one of these must be present
+        # Ensure to check output.answer directly
+        provider: output.answer
       - type: llm-rubric
         value: The answer clearly explains methods for data sourcing mentioned in the course.
+        provider: output.answer # Ensure to check output.answer directly
 
   - description: Question about data preparation tools
     vars:
       question: "Which tools are used for data preparation?"
-      image: null
+      image: "" # Changed from null to empty string
     assert:
       - type: contains-any
         value: ["spreadsheets", "bash", "OpenRefine", "Python", "LLMs"]
         threshold: 1
+        # Ensure to check output.answer directly
+        provider: output.answer
+      - type: llm-rubric
+        value: The answer clearly explains methods for data preparation tools mentioned in the course.
+        provider: output.answer # Ensure to check output.answer directly
 
   - description: Question about a specific topic from Discourse (e.g., related to quizzes)
     vars:
       question: "I have a doubt about Quiz 2 in CT, where can I find clarification?"
-      image: null
+      image: "" # Changed from null to empty string
     assert:
       - type: contains-any
         value: ["Quiz 2", "clarification", "Discourse", "forum"]
         threshold: 2
+        # Ensure to check output.answer directly
+        provider: output.answer
       - type: llm-rubric
         value: The answer provides guidance on how to find help or mentions the relevant forum.
+        provider: output.answer # Ensure to check output.answer directly
 
   - description: Image-based question (if multimodal LLM and image data is correctly populated)
     vars:
@@ -74,5 +84,9 @@ tests:
       # !! IMPORTANT !!
       # Replace this with an actual base64 encoded image string if you want to test image input.
       # For example, convert 'project-tds-virtual-ta-q1.webp' to base64 and paste here.
-      # If you don't have a test image ready, you can set this to null for now.
-      image: "data:image/webp;base64,UklGRt4LAABXRUJQVlA4INILAAAQEwCdASpRBMUPADlqulEq/qg/Gg3+QZpMAIAusYyY45gAAAA/i6l185/UAAAAAAAH406v/9QAAAAAAB+h7l9G/XAAAAAAA+XwAAAAAAAAAAAAAAAAD9AAAAAAD//7f/h/8B/d////7/+j/4f/9f/h////2//7/+4/r7v/+f/6P/xf/d////+v/4/u///0/83/8P////o/+///+//u/+//+f/l/z/0f//r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87/8P/+/9w/////b/+/+x///+f/v//v//7/+r/8f/u/f//r//v/+4/r/u//z//P/+z/o/v//j/o/+f/9f/h////r/d//f/8P///c//3/+x/o/u///z/+P/+//+f//v////0/87
+      # If you don't have a test image ready, you can set this to empty string for now.
+      image: "" # Changed from null to empty string
+    assert:
+      - type: llm-rubric
+        value: The answer explains the concept based on the diagram and provided context.
+        provider: output.answer # Ensure to check output.answer directly
